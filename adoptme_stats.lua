@@ -2,7 +2,7 @@ local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
-local webhookForwardURL = "http://192.168.100.5/send"
+local webhookForwardURL = "http://192.168.100.5:5000/send"
 
 -- Wait until Adopt Me client data is loaded
 local function wait_for_data()
