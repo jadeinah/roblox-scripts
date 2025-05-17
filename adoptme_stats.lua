@@ -2,7 +2,7 @@ local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
-local webhookForwardURL = "http://192.168.100.5:5000/send"
+local webhookForwardURL = "http://192.168.100.2:5000/send"
 
 -- Wait until Adopt Me client data is loaded
 local function wait_for_data()
@@ -59,5 +59,5 @@ while true do
 		warn("❌ Failed to send stats:", result)
 	end
 
-	task.wait(30) -- send every 30 seconds
+	task.wait(3600) -- send every 30 seconds
 end
