@@ -4,13 +4,12 @@ local Players = game:GetService("Players")
 
 local webhookForwardURL = "http://192.168.100.2:5000/send"
 
--- Wait until Adopt Me client data is loaded
+-- Wait for Adopt Me client data to load
 local function wait_for_data()
 	local clientData = require(ReplicatedStorage:WaitForChild("ClientModules").Core.ClientData)
 	print("⏳ Waiting for client data...")
 
-	repeat
-		task.wait(1)
+	repeat task.wait(1)
 	until clientData.get_data() and clientData.get_data()[Players.LocalPlayer.Name] 
 	       and clientData.get("money") ~= nil
 
@@ -18,53 +17,66 @@ local function wait_for_data()
 	return clientData
 end
 
--- Get only potions and bucks
-local function check_stats(clientData)
+-- Collect potions, bucks, and pets (max 20 kinds)
+local function collect_stats(clientData)
 	local playerData = clientData.get_data()[Players.LocalPlayer.Name]
-
 	local bucks = tonumber(clientData.get("money")) or 0
 	local potions = 0
+	local pets = {}
 
-	-- Count age-up potions
 	for _, item in pairs(playerData.inventory.food or {}) do
 		if item.kind == "pet_age_potion" then
 			potions += 1
 		end
 	end
 
-	print("🍼 Potions:", potions)
-	print("💵 Bucks:", bucks)
+	local kinds_added = 0
+	for _, pet in pairs(playerData.inventory.pets or {}) do
+		local kind = pet.kind
+		if not pets[kind] then
+			if kinds_added >= 20 then
+				pets["..."] = "... and more"
+				break
+			end
+			kinds_added += 1
+		end
+		pets[kind] = (pets[kind] or 0) + 1
+	end
 
-	return potions, bucks
+	return potions, bucks, pets
 end
 
--- Main loop
-print("📡 Adopt Me Stats Uploader Starting...")
+-- Main execution
+print("📡 Adopt Me Stats Uploader Started")
 
 local clientData = wait_for_data()
 
 while true do
-	local potions, bucks = check_stats(clientData)
 	local player = Players.LocalPlayer.Name
+	local potions, bucks, petsTable = collect_stats(clientData)
+
+	local petJSON = HttpService:JSONEncode(petsTable)
+	local encodedPets = HttpService:UrlEncode(petJSON)
 
 	local url = string.format(
-		"%s?player=%s&potions=%d&bucks=%d",
+		"%s?player=%s&potions=%d&bucks=%d&pets=%s",
 		webhookForwardURL,
 		HttpService:UrlEncode(player),
 		potions,
-		bucks
+		bucks,
+		encodedPets
 	)
 
-	print("🌐 Sending:", url)
+	print("🌐 Sending stats:", url)
 
-	local success, result = pcall(function()
+	local success, response = pcall(function()
 		return game:HttpGet(url)
 	end)
 
 	if success then
 		print("✅ Stats sent successfully!")
 	else
-		warn("❌ Failed to send stats:", result)
+		warn("❌ Failed to send stats:", response)
 	end
 
 	task.wait(3600) -- send every hour
