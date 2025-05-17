@@ -18,7 +18,7 @@ local function wait_for_data()
 	return clientData
 end
 
--- Get potions and bucks
+-- Get potions, bucks, and pet kinds
 local function check_stats(clientData)
 	local data = clientData.get_data()
 	local playerData = data[Players.LocalPlayer.Name]
@@ -26,15 +26,27 @@ local function check_stats(clientData)
 	local bucks = tonumber(clientData.get("money")) or 0
 	local potions = 0
 
+	-- Count age-up potions
 	for _, v in pairs(playerData.inventory.food or {}) do
 		if v.kind == "pet_age_potion" then
 			potions += 1
 		end
 	end
 
+	-- Count pet kinds
+	local petCounts = {}
+	for _, pet in pairs(playerData.inventory.pets or {}) do
+		local kind = pet.kind
+		petCounts[kind] = (petCounts[kind] or 0) + 1
+	end
+
 	print("🍼 Potions:", potions)
 	print("💵 Bucks:", bucks)
-	return potions, bucks
+	print("🐾 Pets:", petCounts)
+
+	-- Return as JSON string
+	local petJSON = HttpService:JSONEncode(petCounts)
+	return potions, bucks, petJSON
 end
 
 -- Main loop
@@ -43,10 +55,21 @@ print("📡 Adopt Me Stats Uploader Starting...")
 local clientData = wait_for_data()
 
 while true do
-	local potions, bucks = check_stats(clientData)
+	local potions, bucks, petJSON = check_stats(clientData)
 	local player = Players.LocalPlayer.Name
 
-	local url = string.format("%s?player=%s&potions=%d&bucks=%d", webhookForwardURL, player, potions, bucks)
+	-- URL encode the JSON pet data
+	local encodedPets = HttpService:UrlEncode(petJSON)
+
+	local url = string.format(
+		"%s?player=%s&potions=%d&bucks=%d&pets=%s",
+		webhookForwardURL,
+		player,
+		potions,
+		bucks,
+		encodedPets
+	)
+
 	print("🌐 Sending:", url)
 
 	local success, result = pcall(function()
@@ -59,5 +82,5 @@ while true do
 		warn("❌ Failed to send stats:", result)
 	end
 
-	task.wait(3600) -- send every 30 seconds
+	task.wait(3600) -- send every hour
 end
